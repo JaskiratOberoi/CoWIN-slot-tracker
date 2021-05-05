@@ -14,7 +14,7 @@ user_list = [{"email": "achal2812@gmail.com", "pin": "110085"},
 @app.route('/done', methods=['GET', 'POST'])
 def api():
     if request.method == 'POST':
-        # user_list.append({"email": request.form['mail'], "pin": request.form['pin']})
+        user_list.append({"email": request.form['mail'], "pin": request.form['pin']})
         return render_template('landing.html')
     yield
     parse(user_list)
@@ -64,19 +64,18 @@ def send_mail_using_gmail(email_data):
     with open('settings.json', 'r') as file:
         secret = json.loads(file.read().replace('\n', ''))
 
-    port = 465  # For SSL
+    port = 465
     smtp_server = "smtp.gmail.com"
-    sender_email = "xylotronjay@gmail.com"  # Enter your address
+    sender_email = "xylotronjay@gmail.com"
     password = secret['gmail_password']
 
     context = ssl.create_default_context()
     with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
         for receiver in email_data:
             receiver_email = receiver['email']
-            message = """\
-                CoWIN Slot Notifier
-
-                Hi! Following center(s) are available for you:"""
+            message = """Subject: CoWIN: New Slots Available\nFrom: CoWIN Slot Notifier\n
+            \nThis is an auto-generated mail, please do not reply.
+            \n\nHi! Following center(s) are available for you:""".format(sender_email, receiver_email)
             count = 1
             for center in receiver['info']:
                 primary_text = ('\n\n' + str(count) + '. {0}, {1}, {2}, {3}').format(center['name'], center['address'], center['state_name'], center['district_name'])
