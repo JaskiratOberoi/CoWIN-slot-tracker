@@ -91,4 +91,4 @@ def send_mail_using_gmail(email_data):
 
 
 if __name__ == '__main__':
-    home(user_list)
+    home()
