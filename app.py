@@ -7,17 +7,68 @@ import requests
 from flask import Flask, request, render_template
 
 app = Flask(__name__)
-user_list = [{"email": "achal2812@gmail.com", "pin": "110085"},
-             {"email": "jso101196@gmail.com", "pin": "110045"}]
+user_list = [{"email": "achal2812@gmail.com", "districts": ['143', '146']},
+             {"email": "vicky30498@gmail.com", "districts": ['143', '146']}]
+
+district_reference = [
+    {
+        "district_id": 140,
+        "district_name": "New Delhi"
+    },
+    {
+        "district_id": 141,
+        "district_name": "Central Delhi"
+    },
+    {
+        "district_id": 142,
+        "district_name": "West Delhi"
+    },
+    {
+        "district_id": 143,
+        "district_name": "North West Delhi"
+    },
+    {
+        "district_id": 144,
+        "district_name": "South East Delhi"
+    },
+    {
+        "district_id": 145,
+        "district_name": "East Delhi"
+    },
+
+    {
+        "district_id": 146,
+        "district_name": "North Delhi"
+    },
+    {
+        "district_id": 147,
+        "district_name": "North East Delhi"
+    },
+
+    {
+        "district_id": 148,
+        "district_name": "Shahdara"
+    },
+    {
+        "district_id": 149,
+        "district_name": "South Delhi"
+    },
+
+    {
+        "district_id": 150,
+        "district_name": "South West Delhi"
+    },
+
+]
 
 
 @app.route('/done', methods=['GET', 'POST'])
 def api():
     if request.method == 'POST':
-        user_list.append({"email": request.form['mail'], "pin": request.form['pin']})
+        user_list.append({"email": request.form['mail'], "districts": request.form['districts']})
         return render_template('landing.html')
     yield
-    parse(user_list)
+    parse()
 
 
 @app.route('/')
@@ -25,7 +76,7 @@ def home():
     return render_template('index.html')
 
 
-def parse(user_list):
+def parse():
     headers = {
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,/;q=0.8",
         "Accept-Language": "en-US,en;q=0.5",
@@ -37,27 +88,29 @@ def parse(user_list):
     email_data = []
     for user in user_list:
         try:
-            url = 'https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByPin?pincode={0}&date={1}'
-            response = requests.get(url.format(user['pin'], datetime.date.today().strftime('%d-%m-%Y')), headers=headers)
-            data = json.loads(response.text)
+            url = 'https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict?district_id={0}&date={1}'
             availability = []
-            if len(data['centers']) > 0:
-                for center in data['centers']:
-                    temp_sessions = []
-                    for session in center['sessions']:
-                        if session['available_capacity'] > 0 and session['min_age_limit'] == 45:
-                            temp_sessions.append(session)
-                    temp_center = center
-                    if len(temp_sessions) > 0:
-                        temp_center['sessions'] = temp_sessions
-                        availability.append(temp_center)
+            for district in user['districts']:
+                response = requests.get(url.format(str(district), datetime.date.today().strftime('%d-%m-%Y')), headers=headers)
+                data = json.loads(response.text)
+                if len(data['centers']) > 0:
+                    for center in data['centers']:
+                        temp_sessions = []
+                        for session in center['sessions']:
+                            if session['available_capacity'] > 0 and session['min_age_limit'] < 45:
+                                temp_sessions.append(session)
+                        temp_center = center
+                        if len(temp_sessions) > 0:
+                            temp_center['sessions'] = temp_sessions
+                            availability.append(temp_center)
         except Exception as E:
             raise E
         if availability:
             email_data.append({'email': user['email'], 'info': availability})
-    send_mail_using_gmail(email_data)
+    if email_data:
+        send_mail_using_gmail(email_data)
     time.sleep(120)
-    parse(user_list)
+    parse()
 
 
 def send_mail_using_gmail(email_data):
@@ -78,7 +131,8 @@ def send_mail_using_gmail(email_data):
             \n\nHi! Following center(s) are available for you:""".format(sender_email, receiver_email)
             count = 1
             for center in receiver['info']:
-                primary_text = ('\n\n' + str(count) + '. {0}, {1}, {2}, {3}').format(center['name'], center['address'], center['state_name'], center['district_name'])
+                primary_text = ('\n\n' + str(count) + '. {0}, {1}, {2}, {3}, {4}').format(center['name'], center['address'], center['state_name'], center['district_name'],
+                                                                                          center['pincode'])
                 secondary_text = ''
                 for avail_date in center['sessions']:
                     secondary_text = (secondary_text + '\n\tDate: {0}, Vaccine: {1}, Capacity: {2}').format(
@@ -90,4 +144,4 @@ def send_mail_using_gmail(email_data):
 
 
 if __name__ == '__main__':
-    home()
+    parse()
